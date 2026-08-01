@@ -4,3 +4,4 @@ supabase/.temp/
 .vscode/
 .DS_Store
 .bot-secrets
+SETUP.local.md
