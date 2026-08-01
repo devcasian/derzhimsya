@@ -71,6 +71,9 @@ function buildHeatmap(days, today) {
   const monthRow = element("div", "heatmap-months");
 
   let lastMonth = null;
+  let lastLabelColumn = null;
+  let column = 0;
+
   for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
     const iso = toIso(cursor);
     const status = statusByDate.get(iso) ?? "none";
@@ -79,12 +82,24 @@ function buildHeatmap(days, today) {
     cell.title = `${formatDate(iso)} — ${STATUS_LABELS[status] ?? "нет данных"}`;
     grid.appendChild(cell);
 
-    // One label per column, emitted on the top row of each week.
+    // One slot per column, emitted on the Monday that starts each week. A label
+    // is wider than a column, so keep at least three columns between labels.
     if (weekdayIndex(cursor) === 0) {
       const month = cursor.getUTCMonth();
-      const label = element("span", "heatmap-month", month === lastMonth ? "" : MONTHS_SHORT[month]);
-      lastMonth = month;
+      const isNewMonth = month !== lastMonth;
+      const hasRoom = lastLabelColumn === null || column - lastLabelColumn >= 3;
+
+      const label = element("span", "heatmap-month");
+      // If there is no room, leave lastMonth alone so the label reappears a
+      // column later instead of the month going unlabelled entirely.
+      if (isNewMonth && hasRoom) {
+        label.textContent = MONTHS_SHORT[month];
+        lastLabelColumn = column;
+        lastMonth = month;
+      }
+
       monthRow.appendChild(label);
+      column++;
     }
   }
 
