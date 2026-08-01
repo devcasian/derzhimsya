@@ -13,6 +13,8 @@ const STATUS_LABELS = {
   fail: "сорвался",
   pending: "не отмечен",
   missed: "пропущен",
+  none: "до старта",
+  future: "ещё впереди",
 };
 
 const app = document.getElementById("app");
@@ -62,20 +64,17 @@ function element(tag, className, text) {
 function buildHeatmap(days, today, startDate) {
   const statusByDate = new Map(days.map((d) => [d.date, d.status]));
 
-  // The calendar grows from the week tracking began and stops growing once it
-  // hits weeksShown, after which it becomes a sliding window.
-  const end = parseDate(today);
-  const windowStart = parseDate(today);
-  windowStart.setUTCDate(windowStart.getUTCDate() - weekdayIndex(end) - (CONFIG.weeksShown - 1) * 7);
-
+  // Always draw at least weeksShown weeks from the start, so the calendar has
+  // its full shape from day one — the empty part ahead is the point.
   // Align the first column to a Monday so every grid column is one full week.
-  const trackingStart = parseDate(startDate);
-  trackingStart.setUTCDate(trackingStart.getUTCDate() - weekdayIndex(parseDate(startDate)));
+  const firstDataMonth = parseDate(startDate).getUTCMonth();
+  const start = parseDate(startDate);
+  start.setUTCDate(start.getUTCDate() - weekdayIndex(parseDate(startDate)));
 
-  const start = trackingStart > windowStart ? trackingStart : windowStart;
-  const firstDataMonth = parseDate(startDate) > start
-    ? parseDate(startDate).getUTCMonth()
-    : start.getUTCMonth();
+  const plannedEnd = new Date(start);
+  plannedEnd.setUTCDate(plannedEnd.getUTCDate() + CONFIG.weeksShown * 7 - 1);
+  const todayDate = parseDate(today);
+  const end = todayDate > plannedEnd ? todayDate : plannedEnd;
 
   const grid = element("div", "heatmap");
   const monthRow = element("div", "heatmap-months");
@@ -86,7 +85,7 @@ function buildHeatmap(days, today, startDate) {
 
   for (let cursor = new Date(start); cursor <= end; cursor.setUTCDate(cursor.getUTCDate() + 1)) {
     const iso = toIso(cursor);
-    const status = statusByDate.get(iso) ?? "none";
+    const status = statusByDate.get(iso) ?? (cursor > todayDate ? "future" : "none");
 
     const cell = element("div", `cell cell-${status}`);
     cell.title = `${formatDate(iso)} — ${STATUS_LABELS[status] ?? "нет данных"}`;
