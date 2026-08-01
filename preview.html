@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Держимся — превью</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app"><div class="loading">Загрузка…</div></main>
+  <footer><a href="https://t.me/derzhimsya_bot">Отметить день в боте</a></footer>
+
+  <!-- Local design preview: generates fake data instead of calling Supabase.
+       Safe to delete once the real site is live. -->
+  <script>
+    const CONFIG = { supabaseUrl: "mock", anonKey: "mock", weeksShown: 14 };
+
+    function mockDays(seed, length) {
+      const days = [];
+      const start = new Date();
+      start.setUTCDate(start.getUTCDate() - length + 1);
+      for (let i = 0; i < length; i++) {
+        const d = new Date(start);
+        d.setUTCDate(d.getUTCDate() + i);
+        const roll = (i * seed) % 11;
+        let status = "success";
+        if (roll === 0) status = "fail";
+        else if (roll === 7 && i < length - 20) status = "missed";
+        if (i >= length - 2) status = "pending";
+        days.push({ date: d.toISOString().slice(0, 10), status });
+      }
+      return days;
+    }
+
+    window.fetch = async () => {
+      const dima = mockDays(3, 74);
+      const vlad = mockDays(5, 74);
+      const body = {
+        today: new Date().toISOString().slice(0, 10),
+        graceDays: 2,
+        participants: [
+          { id: "dima", name: "Дима", habit: "Не заказывать еду", currentStreak: 9,
+            bestStreak: 21, totalSuccess: 58, totalFail: 9, days: dima },
+          { id: "vlad", name: "Влад", habit: "Не парить", currentStreak: 4,
+            bestStreak: 16, totalSuccess: 52, totalFail: 12, days: vlad },
+        ],
+        pair: { currentStreak: 4, bestStreak: 14, totalDays: 47, days: dima },
+      };
+      return { ok: true, json: async () => body };
+    };
+  </script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+supabase/seed.local.sql
+supabase/.temp/
+.supabase-token
+.vscode/
+.DS_Store
+.bot-secrets

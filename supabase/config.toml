@@ -1,0 +1,10 @@
+project_id = "derzhimsya"
+
+# Telegram cannot send a Supabase JWT, so the platform check must be off here.
+# The X-Telegram-Bot-Api-Secret-Token header authenticates the caller instead.
+[functions.telegram-webhook]
+verify_jwt = false
+
+# Called by pg_cron with the service role key.
+[functions.daily-reminder]
+verify_jwt = true
