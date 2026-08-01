@@ -1,4 +1,4 @@
-// Держимся — morning reminder, triggered by pg_cron at 07:00 UTC (10:00 MSK).
+// derzhimsya — morning reminder, triggered by pg_cron at 07:00 UTC (10:00 MSK).
 // Asks about YESTERDAY: the day is over, so the answer is honest.
 // Deploy with "Verify JWT" ENABLED — cron sends the service role key.
 

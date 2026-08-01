@@ -164,7 +164,7 @@ function render(stats) {
   app.replaceChildren();
 
   const header = element("header", "page-header");
-  header.append(element("h1", "", "Держимся"));
+  header.append(element("h1", "", "derzhimsya"));
   header.append(element("p", "subtitle", `Сегодня ${formatDate(stats.today)}`));
   app.appendChild(header);
 

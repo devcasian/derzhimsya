@@ -1,4 +1,4 @@
-// Держимся — Telegram webhook.
+// derzhimsya — Telegram webhook.
 // Deploy with "Verify JWT" DISABLED: Telegram cannot send a Supabase JWT.
 // Authenticity is enforced by the secret token header instead.
 

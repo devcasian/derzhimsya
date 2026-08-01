@@ -1,4 +1,4 @@
--- Держимся — database schema
+-- derzhimsya — database schema
 -- Run this whole file in Supabase Dashboard → SQL Editor.
 
 create extension if not exists pg_cron;
