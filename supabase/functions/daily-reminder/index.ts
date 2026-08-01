@@ -34,20 +34,23 @@ function shiftDate(isoDate: string, delta: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-interface Participant {
+interface Habit {
   id: string;
-  name: string;
+  participant_id: string;
   question: string;
-  telegram_chat_id: number;
+  title: string;
+  participants: { name: string; telegram_chat_id: number };
 }
 
 interface Stats {
   today: string;
-  participants: Array<{
-    id: string; name: string; currentStreak: number;
+  habits: Array<{
+    id: string;
+    isShared: boolean;
+    currentStreak: number;
     days: Array<{ date: string; status: string }>;
   }>;
-  pair: { currentStreak: number; totalDays: number };
+  pair: { currentStreak: number };
 }
 
 async function db(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -76,15 +79,16 @@ async function telegram(method: string, payload: unknown): Promise<void> {
 
 Deno.serve(async () => {
   const stats = await db("rpc/stats", { method: "POST", body: "{}" }) as Stats;
-  const participants = await db(
-    "participants?select=id,name,question,telegram_chat_id&order=sort_order",
-  ) as Participant[];
+  const habits = await db(
+    "habits?select=id,participant_id,question,title,participants(name,telegram_chat_id)" +
+    "&order=participant_id,sort_order",
+  ) as Habit[];
 
   const yesterday = shiftDate(stats.today, -1);
-  const sent: string[] = [];
+  const asked: string[] = [];
 
-  for (const participant of participants) {
-    const state = stats.participants.find((p) => p.id === participant.id);
+  for (const habit of habits) {
+    const state = stats.habits.find((h) => h.id === habit.id);
     if (!state) continue;
 
     // Oldest first: the bot has no commands, so every unreported day needs its
@@ -94,32 +98,33 @@ Deno.serve(async () => {
       .map((d) => d.date)
       .sort();
 
-    if (pending.length === 0) continue;
-
     for (const date of pending) {
       const isYesterday = date === yesterday;
       const heading = isYesterday
-        ? `Доброе утро, ${participant.name}.`
-        : `${participant.name}, этот день остался неотмеченным.`;
+        ? `Доброе утро, ${habit.participants.name}.`
+        : `${habit.participants.name}, этот день остался неотмеченным.`;
+
+      const pairLine = state.isShared
+        ? `\nВместе: ${days(stats.pair.currentStreak)} подряд`
+        : "";
 
       await telegram("sendMessage", {
-        chat_id: participant.telegram_chat_id,
+        chat_id: habit.participants.telegram_chat_id,
         text: `${heading}\n\n` +
-          `${formatDate(date)} — ${participant.question}\n\n` +
-          `Твой стрик: ${days(state.currentStreak)}\n` +
-          `Вместе: ${days(stats.pair.currentStreak)} подряд\n\n` +
+          `${habit.title} — ${formatDate(date)}\n${habit.question}\n\n` +
+          `Твой стрик: ${days(state.currentStreak)}${pairLine}\n\n` +
           SITE_URL,
         reply_markup: {
           inline_keyboard: [[
-            { text: "✅ Держался", callback_data: `c:${date}:1` },
-            { text: "❌ Сорвался", callback_data: `c:${date}:0` },
+            { text: "✅ Держался", callback_data: `c:${habit.id}:${date}:1` },
+            { text: "❌ Сорвался", callback_data: `c:${habit.id}:${date}:0` },
           ]],
         },
       });
-    }
 
-    sent.push(participant.id);
+      asked.push(`${habit.id}@${date}`);
+    }
   }
 
-  return Response.json({ date: yesterday, sent });
+  return Response.json({ date: yesterday, asked });
 });

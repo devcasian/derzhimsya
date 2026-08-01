@@ -118,9 +118,25 @@ body {
   padding: 22px;
 }
 
+.card-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .card-header h2 {
   font-size: 18px;
   font-weight: 600;
+}
+
+.badge {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
 }
 
 .habit {

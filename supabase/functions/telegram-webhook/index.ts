@@ -35,8 +35,15 @@ interface Participant {
   telegram_chat_id: number;
 }
 
+interface Habit {
+  id: string;
+  participant_id: string;
+  title: string;
+  is_shared: boolean;
+}
+
 interface Stats {
-  participants: Array<{ id: string; currentStreak: number }>;
+  habits: Array<{ id: string; title: string; isShared: boolean; currentStreak: number }>;
   pair: { currentStreak: number };
 }
 
@@ -64,10 +71,6 @@ async function telegram(method: string, payload: unknown): Promise<void> {
   if (!res.ok) console.error(`telegram ${method} failed:`, await res.text());
 }
 
-async function loadStats(): Promise<Stats> {
-  return await db("rpc/stats", { method: "POST", body: "{}" }) as Stats;
-}
-
 async function findParticipant(chatId: number): Promise<Participant | null> {
   const rows = await db(
     `participants?telegram_chat_id=eq.${chatId}&select=id,name,telegram_chat_id`,
@@ -75,10 +78,11 @@ async function findParticipant(chatId: number): Promise<Participant | null> {
   return rows[0] ?? null;
 }
 
-async function allParticipants(): Promise<Participant[]> {
-  return await db(
-    "participants?select=id,name,telegram_chat_id&order=sort_order",
-  ) as Participant[];
+async function findHabit(habitId: string): Promise<Habit | null> {
+  const rows = await db(
+    `habits?id=eq.${encodeURIComponent(habitId)}&select=id,participant_id,title,is_shared`,
+  ) as Habit[];
+  return rows[0] ?? null;
 }
 
 async function handleCallback(query: {
@@ -95,22 +99,30 @@ async function handleCallback(query: {
     return;
   }
 
-  const [, date, flag] = query.data.split(":");
+  const [, habitId, date, flag] = query.data.split(":");
+  const habit = await findHabit(habitId);
+
+  // Guards against a button forwarded to the wrong chat.
+  if (!habit || habit.participant_id !== participant.id) {
+    await telegram("answerCallbackQuery", { callback_query_id: query.id, text: "Это не твоя привычка" });
+    return;
+  }
+
   const success = flag === "1";
 
-  await db("checkins?on_conflict=participant_id,date", {
+  await db("checkins?on_conflict=habit_id,date", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates" },
-    body: JSON.stringify({ participant_id: participant.id, date, success }),
+    body: JSON.stringify({ habit_id: habit.id, date, success }),
   });
 
-  const stats = await loadStats();
-  const me = stats.participants.find((p) => p.id === participant.id)!;
+  const stats = await db("rpc/stats", { method: "POST", body: "{}" }) as Stats;
+  const state = stats.habits.find((h) => h.id === habit.id)!;
 
   const verdict = success ? "✅ продержался" : "❌ сорвался";
-  const text = `${formatDate(date)} — ${verdict}\n\n` +
-    `Твой стрик: ${days(me.currentStreak)}\n` +
-    `Вместе: ${days(stats.pair.currentStreak)}\n\n` +
+  const pairLine = habit.is_shared ? `\nВместе: ${days(stats.pair.currentStreak)}` : "";
+  const text = `${habit.title} — ${formatDate(date)}\n${verdict}\n\n` +
+    `Твой стрик: ${days(state.currentStreak)}${pairLine}\n\n` +
     SITE_URL;
 
   await telegram("answerCallbackQuery", { callback_query_id: query.id });
@@ -122,7 +134,14 @@ async function handleCallback(query: {
     });
   }
 
-  const others = (await allParticipants()).filter((p) => p.id !== participant.id);
+  // Personal habits stay personal — only shared ones are worth nudging the
+  // other person about.
+  if (!habit.is_shared) return;
+
+  const others = await db(
+    `participants?id=neq.${participant.id}&select=id,name,telegram_chat_id`,
+  ) as Participant[];
+
   for (const other of others) {
     await telegram("sendMessage", {
       chat_id: other.telegram_chat_id,

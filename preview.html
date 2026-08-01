@@ -33,19 +33,25 @@
     }
 
     window.fetch = async () => {
-      const dima = mockDays(3, 74);
-      const vlad = mockDays(5, 74);
-      const started = dima[0].date;
+      const dimaFood = mockDays(3, 74);
+      const vladFood = mockDays(5, 74);
+      const vladVape = mockDays(7, 74);
+      const started = dimaFood[0].date;
       const body = {
         today: new Date().toISOString().slice(0, 10),
         graceDays: 2,
-        participants: [
-          { id: "dima", name: "Дима", habit: "Не заказывать еду", startDate: started,
-            currentStreak: 9, bestStreak: 21, totalSuccess: 58, totalFail: 9, days: dima },
-          { id: "vlad", name: "Влад", habit: "Не парить", startDate: started,
-            currentStreak: 4, bestStreak: 16, totalSuccess: 52, totalFail: 12, days: vlad },
+        habits: [
+          { id: "dima-food", participantName: "Дима", title: "Не заказывать еду",
+            isShared: true, startDate: started,
+            currentStreak: 9, bestStreak: 21, totalSuccess: 58, totalFail: 9, days: dimaFood },
+          { id: "vlad-food", participantName: "Влад", title: "Не заказывать еду",
+            isShared: true, startDate: started,
+            currentStreak: 4, bestStreak: 16, totalSuccess: 52, totalFail: 12, days: vladFood },
+          { id: "vlad-vape", participantName: "Влад", title: "Вейп",
+            isShared: false, startDate: started,
+            currentStreak: 2, bestStreak: 11, totalSuccess: 44, totalFail: 20, days: vladVape },
         ],
-        pair: { currentStreak: 4, bestStreak: 14, totalDays: 47, days: dima },
+        pair: { currentStreak: 4, bestStreak: 14, totalDays: 47 },
       };
       return { ok: true, json: async () => body };
     };

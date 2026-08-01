@@ -135,31 +135,34 @@ function buildStat(value, label, modifier) {
   return stat;
 }
 
-function buildParticipantCard(participant, today) {
+function buildHabitCard(habit, today) {
   const card = element("section", "card");
 
   const header = element("header", "card-header");
-  header.append(element("h2", "", participant.name));
-  header.append(element("p", "habit", participant.habit));
+  const titleRow = element("div", "card-title");
+  titleRow.append(element("h2", "", habit.participantName));
+  if (!habit.isShared) titleRow.append(element("span", "badge", "личная"));
+  header.append(titleRow);
+  header.append(element("p", "habit", habit.title));
   card.appendChild(header);
 
   const stats = element("div", "stats");
-  stats.append(buildStat(participant.currentStreak, `${daysWord(participant.currentStreak)} подряд`, "primary"));
-  stats.append(buildStat(participant.bestStreak, "рекорд"));
-  stats.append(buildStat(participant.totalSuccess, "всего чисто"));
-  stats.append(buildStat(participant.totalFail, "срывов"));
+  stats.append(buildStat(habit.currentStreak, `${daysWord(habit.currentStreak)} подряд`, "primary"));
+  stats.append(buildStat(habit.bestStreak, "рекорд"));
+  stats.append(buildStat(habit.totalSuccess, "всего чисто"));
+  stats.append(buildStat(habit.totalFail, "срывов"));
   card.appendChild(stats);
 
-  const days = participant.days ?? [];
+  const days = habit.days ?? [];
   const yesterday = shiftDate(today, -1);
   const yesterdayStatus = days.find((d) => d.date === yesterday)?.status;
   if (yesterdayStatus === "pending") {
     card.appendChild(element("p", "note", `${formatDate(yesterday)} ещё не отмечен`));
-  } else if (participant.startDate > today) {
-    card.appendChild(element("p", "note", `Старт ${formatDate(participant.startDate)}`));
+  } else if (habit.startDate > today) {
+    card.appendChild(element("p", "note", `Старт ${formatDate(habit.startDate)}`));
   }
 
-  card.appendChild(buildHeatmap(days, today, participant.startDate));
+  card.appendChild(buildHeatmap(days, today, habit.startDate));
   return card;
 }
 
@@ -173,7 +176,7 @@ function render(stats) {
 
   const hero = element("section", "hero");
   hero.append(element("div", "hero-value", String(stats.pair.currentStreak)));
-  hero.append(element("div", "hero-label", `${daysWord(stats.pair.currentStreak)} подряд держимся оба`));
+  hero.append(element("div", "hero-label", `${daysWord(stats.pair.currentStreak)} подряд без заказов еды у обоих`));
 
   const heroStats = element("div", "hero-stats");
   heroStats.append(element("span", "", `рекорд — ${stats.pair.bestStreak}`));
@@ -182,7 +185,7 @@ function render(stats) {
   app.appendChild(hero);
 
   const grid = element("div", "cards");
-  stats.participants.forEach((p) => grid.appendChild(buildParticipantCard(p, stats.today)));
+  stats.habits.forEach((h) => grid.appendChild(buildHabitCard(h, stats.today)));
   app.appendChild(grid);
 }
 
