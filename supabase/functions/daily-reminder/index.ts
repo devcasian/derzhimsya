@@ -87,8 +87,8 @@ Deno.serve(async () => {
     const state = stats.participants.find((p) => p.id === participant.id);
     if (!state) continue;
 
-    // Ask about the oldest unreported day first, so a skipped day does not
-    // silently roll past the grace window.
+    // Oldest first: the bot has no commands, so every unreported day needs its
+    // own message with its own buttons before it ages out of the grace window.
     const pending = state.days
       .filter((d) => d.status === "pending" && d.date !== stats.today)
       .map((d) => d.date)
@@ -96,31 +96,27 @@ Deno.serve(async () => {
 
     if (pending.length === 0) continue;
 
-    const date = pending[0];
-    const isYesterday = date === yesterday;
-    const heading = isYesterday
-      ? `Доброе утро, ${participant.name}.`
-      : `${participant.name}, ты пропустил отметку.`;
+    for (const date of pending) {
+      const isYesterday = date === yesterday;
+      const heading = isYesterday
+        ? `Доброе утро, ${participant.name}.`
+        : `${participant.name}, этот день остался неотмеченным.`;
 
-    const backlog = pending.length > 1
-      ? `\n\nПосле этого — ещё ${pending.length - 1} ${plural(pending.length - 1, "день", "дня", "дней")}: /mark`
-      : "";
-
-    await telegram("sendMessage", {
-      chat_id: participant.telegram_chat_id,
-      text: `${heading}\n\n` +
-        `${formatDate(date)} — ${participant.question}\n\n` +
-        `Твой стрик: ${days(state.currentStreak)}\n` +
-        `Вместе: ${days(stats.pair.currentStreak)} подряд` +
-        backlog +
-        `\n\n${SITE_URL}`,
-      reply_markup: {
-        inline_keyboard: [[
-          { text: "✅ Держался", callback_data: `c:${date}:1` },
-          { text: "❌ Сорвался", callback_data: `c:${date}:0` },
-        ]],
-      },
-    });
+      await telegram("sendMessage", {
+        chat_id: participant.telegram_chat_id,
+        text: `${heading}\n\n` +
+          `${formatDate(date)} — ${participant.question}\n\n` +
+          `Твой стрик: ${days(state.currentStreak)}\n` +
+          `Вместе: ${days(stats.pair.currentStreak)} подряд\n\n` +
+          SITE_URL,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "✅ Держался", callback_data: `c:${date}:1` },
+            { text: "❌ Сорвался", callback_data: `c:${date}:0` },
+          ]],
+        },
+      });
+    }
 
     sent.push(participant.id);
   }

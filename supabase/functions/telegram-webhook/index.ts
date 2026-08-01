@@ -32,23 +32,12 @@ function days(n: number): string {
 interface Participant {
   id: string;
   name: string;
-  habit: string;
-  question: string;
   telegram_chat_id: number;
 }
 
-interface Day { date: string; status: string }
-
 interface Stats {
-  today: string;
-  graceDays: number;
-  participants: Array<{
-    id: string; name: string; habit: string;
-    currentStreak: number; bestStreak: number;
-    totalSuccess: number; totalFail: number;
-    days: Day[];
-  }>;
-  pair: { currentStreak: number; bestStreak: number; totalDays: number; days: Day[] };
+  participants: Array<{ id: string; currentStreak: number }>;
+  pair: { currentStreak: number };
 }
 
 async function db(path: string, init: RequestInit = {}): Promise<unknown> {
@@ -81,43 +70,15 @@ async function loadStats(): Promise<Stats> {
 
 async function findParticipant(chatId: number): Promise<Participant | null> {
   const rows = await db(
-    `participants?telegram_chat_id=eq.${chatId}&select=id,name,habit,question,telegram_chat_id`,
+    `participants?telegram_chat_id=eq.${chatId}&select=id,name,telegram_chat_id`,
   ) as Participant[];
   return rows[0] ?? null;
 }
 
 async function allParticipants(): Promise<Participant[]> {
   return await db(
-    "participants?select=id,name,habit,question,telegram_chat_id&order=sort_order",
+    "participants?select=id,name,telegram_chat_id&order=sort_order",
   ) as Participant[];
-}
-
-function checkinKeyboard(date: string) {
-  return {
-    inline_keyboard: [[
-      { text: "✅ Держался", callback_data: `c:${date}:1` },
-      { text: "❌ Сорвался", callback_data: `c:${date}:0` },
-    ]],
-  };
-}
-
-// Days the participant still can (and should) report on.
-function unreportedDays(stats: Stats, participantId: string): string[] {
-  const p = stats.participants.find((x) => x.id === participantId);
-  if (!p) return [];
-  return p.days
-    .filter((d) => d.status === "pending" && d.date !== stats.today)
-    .map((d) => d.date);
-}
-
-function summary(stats: Stats): string {
-  const lines = stats.participants.map((p) =>
-    `${p.name} — ${p.habit.toLowerCase()}\n` +
-    `  Стрик: ${days(p.currentStreak)}   Рекорд: ${days(p.bestStreak)}`
-  );
-  lines.push(`\nВместе: ${days(stats.pair.currentStreak)} подряд, ${days(stats.pair.totalDays)} всего`);
-  lines.push(SITE_URL);
-  return lines.join("\n");
 }
 
 async function handleCallback(query: {
@@ -147,14 +108,10 @@ async function handleCallback(query: {
   const me = stats.participants.find((p) => p.id === participant.id)!;
 
   const verdict = success ? "✅ продержался" : "❌ сорвался";
-  let text = `${formatDate(date)} — ${verdict}\n\n` +
+  const text = `${formatDate(date)} — ${verdict}\n\n` +
     `Твой стрик: ${days(me.currentStreak)}\n` +
-    `Вместе: ${days(stats.pair.currentStreak)}`;
-
-  const remaining = unreportedDays(stats, participant.id);
-  if (remaining.length > 0) {
-    text += `\n\nОсталось отметить: ${remaining.map(formatDate).join(", ")} — /mark`;
-  }
+    `Вместе: ${days(stats.pair.currentStreak)}\n\n` +
+    SITE_URL;
 
   await telegram("answerCallbackQuery", { callback_query_id: query.id });
   if (query.message) {
@@ -190,38 +147,14 @@ async function handleMessage(message: {
     return;
   }
 
-  const command = (message.text ?? "").trim().split(/[\s@]/)[0].toLowerCase();
-  const stats = await loadStats();
-
-  if (command === "/start" || command === "/help") {
-    await telegram("sendMessage", {
-      chat_id: chatId,
-      text: `Привет, ${participant.name}.\n\n` +
-        `Каждое утро в 10:00 я спрошу про вчерашний день. Отвечаешь одной кнопкой.\n\n` +
-        `/status — где мы сейчас\n` +
-        `/mark — отметить пропущенные дни\n\n` +
-        SITE_URL,
-    });
-    return;
-  }
-
-  if (command === "/mark") {
-    const pending = unreportedDays(stats, participant.id);
-    if (pending.length === 0) {
-      await telegram("sendMessage", { chat_id: chatId, text: "Всё отмечено." });
-      return;
-    }
-    for (const date of pending) {
-      await telegram("sendMessage", {
-        chat_id: chatId,
-        text: `${formatDate(date)} — ${participant.question}`,
-        reply_markup: checkinKeyboard(date),
-      });
-    }
-    return;
-  }
-
-  await telegram("sendMessage", { chat_id: chatId, text: summary(stats) });
+  // The bot has no commands: it asks, you press a button. Everything else
+  // lives on the site.
+  await telegram("sendMessage", {
+    chat_id: chatId,
+    text: `Привет, ${participant.name}.\n\n` +
+      `Каждое утро в 10:00 я спрошу про вчерашний день — отвечаешь одной кнопкой.\n\n` +
+      `Вся статистика на сайте:\n${SITE_URL}`,
+  });
 }
 
 Deno.serve(async (req: Request) => {
