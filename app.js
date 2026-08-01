@@ -59,13 +59,23 @@ function element(tag, className, text) {
   return node;
 }
 
-function buildHeatmap(days, today) {
+function buildHeatmap(days, today, startDate) {
   const statusByDate = new Map(days.map((d) => [d.date, d.status]));
 
-  // Align the first column to a Monday so every grid column is one full week.
+  // The calendar grows from the week tracking began and stops growing once it
+  // hits weeksShown, after which it becomes a sliding window.
   const end = parseDate(today);
-  const start = parseDate(today);
-  start.setUTCDate(start.getUTCDate() - weekdayIndex(end) - (CONFIG.weeksShown - 1) * 7);
+  const windowStart = parseDate(today);
+  windowStart.setUTCDate(windowStart.getUTCDate() - weekdayIndex(end) - (CONFIG.weeksShown - 1) * 7);
+
+  // Align the first column to a Monday so every grid column is one full week.
+  const trackingStart = parseDate(startDate);
+  trackingStart.setUTCDate(trackingStart.getUTCDate() - weekdayIndex(parseDate(startDate)));
+
+  const start = trackingStart > windowStart ? trackingStart : windowStart;
+  const firstDataMonth = parseDate(startDate) > start
+    ? parseDate(startDate).getUTCMonth()
+    : start.getUTCMonth();
 
   const grid = element("div", "heatmap");
   const monthRow = element("div", "heatmap-months");
@@ -85,7 +95,9 @@ function buildHeatmap(days, today) {
     // One slot per column, emitted on the Monday that starts each week. A label
     // is wider than a column, so keep at least three columns between labels.
     if (weekdayIndex(cursor) === 0) {
-      const month = cursor.getUTCMonth();
+      // The first column is usually partial; label it by the month the data
+      // actually starts in, not by the Monday that pads it out.
+      const month = column === 0 ? firstDataMonth : cursor.getUTCMonth();
       const isNewMonth = month !== lastMonth;
       const hasRoom = lastLabelColumn === null || column - lastLabelColumn >= 3;
 
@@ -145,7 +157,7 @@ function buildParticipantCard(participant, today) {
     card.appendChild(element("p", "note", `${formatDate(yesterday)} ещё не отмечен`));
   }
 
-  card.appendChild(buildHeatmap(participant.days, today));
+  card.appendChild(buildHeatmap(participant.days, today, participant.startDate));
   return card;
 }
 

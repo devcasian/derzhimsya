@@ -35,14 +35,15 @@
     window.fetch = async () => {
       const dima = mockDays(3, 74);
       const vlad = mockDays(5, 74);
+      const started = dima[0].date;
       const body = {
         today: new Date().toISOString().slice(0, 10),
         graceDays: 2,
         participants: [
-          { id: "dima", name: "Дима", habit: "Не заказывать еду", currentStreak: 9,
-            bestStreak: 21, totalSuccess: 58, totalFail: 9, days: dima },
-          { id: "vlad", name: "Влад", habit: "Не парить", currentStreak: 4,
-            bestStreak: 16, totalSuccess: 52, totalFail: 12, days: vlad },
+          { id: "dima", name: "Дима", habit: "Не заказывать еду", startDate: started,
+            currentStreak: 9, bestStreak: 21, totalSuccess: 58, totalFail: 9, days: dima },
+          { id: "vlad", name: "Влад", habit: "Не парить", startDate: started,
+            currentStreak: 4, bestStreak: 16, totalSuccess: 52, totalFail: 12, days: vlad },
         ],
         pair: { currentStreak: 4, bestStreak: 14, totalDays: 47, days: dima },
       };
