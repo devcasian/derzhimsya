@@ -154,9 +154,10 @@ select jsonb_build_object(
                           where ds.participant_id = p.id and ds.status = 'success'),
       'totalFail',      (select count(*) from day_status ds
                           where ds.participant_id = p.id and ds.status in ('fail', 'missed')),
-      'days',           (select jsonb_agg(jsonb_build_object('date', ds.date, 'status', ds.status)
-                                          order by ds.date)
-                          from day_status ds where ds.participant_id = p.id)
+      -- Empty until the start date arrives, so coalesce keeps it an array.
+      'days',           coalesce((select jsonb_agg(jsonb_build_object('date', ds.date, 'status', ds.status)
+                                                   order by ds.date)
+                                   from day_status ds where ds.participant_id = p.id), '[]'::jsonb)
     ) order by p.sort_order, p.id)
     from participants p
     left join current_streaks cs on cs.participant_id = p.id

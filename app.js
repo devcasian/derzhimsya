@@ -150,13 +150,16 @@ function buildParticipantCard(participant, today) {
   stats.append(buildStat(participant.totalFail, "срывов"));
   card.appendChild(stats);
 
+  const days = participant.days ?? [];
   const yesterday = shiftDate(today, -1);
-  const yesterdayStatus = participant.days.find((d) => d.date === yesterday)?.status;
+  const yesterdayStatus = days.find((d) => d.date === yesterday)?.status;
   if (yesterdayStatus === "pending") {
     card.appendChild(element("p", "note", `${formatDate(yesterday)} ещё не отмечен`));
+  } else if (participant.startDate > today) {
+    card.appendChild(element("p", "note", `Старт ${formatDate(participant.startDate)}`));
   }
 
-  card.appendChild(buildHeatmap(participant.days, today, participant.startDate));
+  card.appendChild(buildHeatmap(days, today, participant.startDate));
   return card;
 }
 
