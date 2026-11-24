@@ -17,6 +17,13 @@ import {
 } from "../_shared/checkin.ts";
 
 const WEBHOOK_SECRET = Deno.env.get("TELEGRAM_WEBHOOK_SECRET")!;
+const ADMIN_CHAT_ID = Deno.env.get("TELEGRAM_ADMIN_CHAT_ID")!;
+
+interface IncomingMessage {
+  chat: { id: number };
+  from?: { first_name: string; last_name?: string; username?: string };
+  text?: string;
+}
 
 interface CallbackQuery {
   id: string;
@@ -120,7 +127,19 @@ async function handleCallback(query: CallbackQuery): Promise<void> {
   }
 }
 
-async function handleMessage(message: { chat: { id: number } }): Promise<void> {
+async function notifyAdmin(message: IncomingMessage): Promise<void> {
+  const from = message.from;
+  const name = [from?.first_name, from?.last_name].filter(Boolean).join(" ") || "без имени";
+  const username = from?.username ? ` (@${from.username})` : "";
+  const text = message.text ? `\nТекст: ${message.text.slice(0, 200)}` : "";
+
+  await telegram("sendMessage", {
+    chat_id: ADMIN_CHAT_ID,
+    text: `Боту написал незнакомый человек: ${name}${username}\nchat_id: ${message.chat.id}${text}`,
+  });
+}
+
+async function handleMessage(message: IncomingMessage): Promise<void> {
   const chatId = message.chat.id;
   const participant = await findParticipant(chatId);
 
@@ -129,6 +148,7 @@ async function handleMessage(message: { chat: { id: number } }): Promise<void> {
       chat_id: chatId,
       text: `Этот бот приватный.\nТвой chat_id: ${chatId}`,
     });
+    await notifyAdmin(message);
     return;
   }
 
