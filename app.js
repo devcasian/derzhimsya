@@ -179,7 +179,7 @@ function render(stats) {
 
   const hero = element("section", "hero");
   hero.append(element("div", "hero-value", String(stats.pair.currentStreak)));
-  hero.append(element("div", "hero-label", `${daysWord(stats.pair.currentStreak)} подряд без заказов еды у обоих`));
+  hero.append(element("div", "hero-label", `${daysWord(stats.pair.currentStreak)} сухого закона у обоих`));
 
   const heroStats = element("div", "hero-stats");
   heroStats.append(element("span", "", `рекорд — ${stats.pair.bestStreak}`));
