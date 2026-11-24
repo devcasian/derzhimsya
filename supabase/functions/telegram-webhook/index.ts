@@ -80,24 +80,27 @@ async function handleCallback(query: CallbackQuery): Promise<void> {
   }
 
   const success = flag === "1";
-  if (previous === (success ? "success" : "fail")) {
-    await answer(query.id);
-    return;
+  const changed = previous !== (success ? "success" : "fail");
+
+  if (changed) {
+    await db("checkins?on_conflict=habit_id,date", {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({ habit_id: habit.id, date, success }),
+    });
   }
 
-  await db("checkins?on_conflict=habit_id,date", {
-    method: "POST",
-    headers: { Prefer: "resolution=merge-duplicates" },
-    body: JSON.stringify({ habit_id: habit.id, date, success }),
-  });
-
-  const updated = await fetchStats();
+  const updated = changed ? await fetchStats() : stats;
   await answer(query.id);
+  // Refresh even when nothing changed: the day may have been answered in
+  // another copy of this message, leaving this one stale. When it is already
+  // current, Telegram rejects the edit as "message is not modified" — that
+  // logged error is expected.
   await refresh(query, updated, participant, date);
 
   // Personal habits stay personal — only shared ones are worth nudging the
   // other person about.
-  if (!habit.isShared) return;
+  if (!changed || !habit.isShared) return;
 
   const action = previous === "pending"
     ? byGender(participant.gender, "отметил", "отметила")
