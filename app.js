@@ -8,14 +8,17 @@ const MONTHS_SHORT = [
 ];
 const WEEKDAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 
-const STATUS_LABELS = {
-  success: "продержался",
-  fail: "сорвался",
-  pending: "не отмечен",
-  missed: "пропущен",
-  none: "до старта",
-  future: "ещё впереди",
-};
+function statusLabels(gender) {
+  const female = gender === "f";
+  return {
+    success: female ? "продержалась" : "продержался",
+    fail: female ? "сорвалась" : "сорвался",
+    pending: "не отмечен",
+    missed: "пропущен",
+    none: "до старта",
+    future: "ещё впереди",
+  };
+}
 
 const app = document.getElementById("app");
 
@@ -61,7 +64,7 @@ function element(tag, className, text) {
   return node;
 }
 
-function buildHeatmap(days, today, startDate) {
+function buildHeatmap(days, today, startDate, labels) {
   const statusByDate = new Map(days.map((d) => [d.date, d.status]));
 
   // Always draw at least weeksShown weeks from the start, so the calendar has
@@ -88,7 +91,7 @@ function buildHeatmap(days, today, startDate) {
     const status = statusByDate.get(iso) ?? (cursor > todayDate ? "future" : "none");
 
     const cell = element("div", `cell cell-${status}`);
-    cell.title = `${formatDate(iso)} — ${STATUS_LABELS[status] ?? "нет данных"}`;
+    cell.title = `${formatDate(iso)} — ${labels[status] ?? "нет данных"}`;
     grid.appendChild(cell);
 
     // One slot per column, emitted on the Monday that starts each week. A label
@@ -143,7 +146,7 @@ function buildHabitCard(habit, today) {
   titleRow.append(element("h2", "", habit.participantName));
   if (!habit.isShared) titleRow.append(element("span", "badge", "личная"));
   header.append(titleRow);
-  header.append(element("p", "habit", habit.title));
+  header.append(element("p", "habit", `${habit.emoji} ${habit.title}`));
   card.appendChild(header);
 
   const stats = element("div", "stats");
@@ -162,7 +165,7 @@ function buildHabitCard(habit, today) {
     card.appendChild(element("p", "note", `Старт ${formatDate(habit.startDate)}`));
   }
 
-  card.appendChild(buildHeatmap(days, today, habit.startDate));
+  card.appendChild(buildHeatmap(days, today, habit.startDate, statusLabels(habit.participantGender)));
   return card;
 }
 

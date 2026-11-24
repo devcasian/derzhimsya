@@ -8,8 +8,10 @@ create extension if not exists pg_net;
 -- Tables
 --
 -- A habit belongs to a participant, and a participant can have several. Shared
--- habits are the ones the joint streak is built from; personal ones (Vlad's
--- vape) are tracked the same way but never drag the pair down.
+-- habits are the ones the joint streak is built from; personal ones are
+-- tracked the same way but never drag the pair down.
+--
+-- gender only picks verb endings in the bot and on the site.
 -- ---------------------------------------------------------------------------
 
 drop table if exists checkins cascade;
@@ -19,6 +21,7 @@ drop table if exists participants cascade;
 create table participants (
   id                text   primary key,
   name              text   not null,
+  gender            text   not null check (gender in ('m', 'f')),
   telegram_chat_id  bigint not null unique,
   sort_order        int    not null default 0
 );
@@ -27,7 +30,7 @@ create table habits (
   id              text    primary key,
   participant_id  text    not null references participants(id) on delete cascade,
   title           text    not null,
-  question        text    not null,
+  emoji           text    not null,
   is_shared       boolean not null default false,
   start_date      date    not null,
   sort_order      int     not null default 0
@@ -172,7 +175,9 @@ select jsonb_build_object(
       'id',              h.id,
       'participantId',   p.id,
       'participantName', p.name,
+      'participantGender', p.gender,
       'title',           h.title,
+      'emoji',           h.emoji,
       'isShared',        h.is_shared,
       'startDate',       h.start_date,
       'currentStreak',   coalesce(cs.streak, 0),
@@ -185,7 +190,7 @@ select jsonb_build_object(
       'days',            coalesce((select jsonb_agg(jsonb_build_object('date', ds.date, 'status', ds.status)
                                                     order by ds.date)
                                     from day_status ds where ds.habit_id = h.id), '[]'::jsonb)
-    ) order by p.sort_order, h.sort_order, h.id)
+    ) order by h.is_shared desc, p.sort_order, h.sort_order, h.id)
     from habits h
     join participants p on p.id = h.participant_id
     left join current_streaks cs on cs.habit_id = h.id
