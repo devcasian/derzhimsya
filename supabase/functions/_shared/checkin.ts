@@ -125,32 +125,31 @@ export function renderCheckin(
   };
 }
 
-function heading(stats: Stats, participant: Participant, date: string, isMorning: boolean): string {
+function heading(stats: Stats, participant: Participant, date: string): string {
   const when = formatDate(date);
-  if (date !== shiftDate(stats.today, -1)) return `${participant.name}, день ${when} остался неотмеченным.`;
-  return isMorning
+  return date === shiftDate(stats.today, -1)
     ? `Доброе утро, ${participant.name}. Как прошло ${when}?`
-    : `${participant.name}, как прошло ${when}?`;
+    : `${participant.name}, день ${when} остался неотмеченным.`;
 }
 
 // Oldest first: that day ages out of the grace window soonest.
-export async function sendCheckins(
-  stats: Stats,
-  participant: Participant,
-  isMorning: boolean,
-): Promise<string[]> {
-  const dates = [...new Set(
+export function pendingDates(stats: Stats, participantId: string): string[] {
+  return [...new Set(
     stats.habits
-      .filter((h) => h.participantId === participant.id)
+      .filter((h) => h.participantId === participantId)
       .flatMap((h) => h.days)
       .filter((d) => d.status === "pending" && isOpen(stats, d.date))
       .map((d) => d.date),
   )].sort();
+}
+
+export async function sendCheckins(stats: Stats, participant: Participant): Promise<string[]> {
+  const dates = pendingDates(stats, participant.id);
 
   for (const date of dates) {
     await telegram("sendMessage", {
       chat_id: participant.telegram_chat_id,
-      ...renderCheckin(stats, participant, date, heading(stats, participant, date, isMorning)),
+      ...renderCheckin(stats, participant, date, heading(stats, participant, date)),
     });
   }
 

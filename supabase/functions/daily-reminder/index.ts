@@ -13,7 +13,7 @@ Deno.serve(async () => {
 
   const asked: string[] = [];
   for (const participant of participants) {
-    const dates = await sendCheckins(stats, participant, true);
+    const dates = await sendCheckins(stats, participant);
     asked.push(...dates.map((date) => `${participant.id}@${date}`));
   }
 

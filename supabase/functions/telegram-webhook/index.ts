@@ -9,8 +9,8 @@ import {
   formatDate,
   isOpen,
   type Participant,
+  pendingDates,
   renderCheckin,
-  sendCheckins,
   type Stats,
   statusOn,
   verdict,
@@ -152,16 +152,17 @@ async function handleMessage(message: IncomingMessage): Promise<void> {
     return;
   }
 
-  // Any message brings back the buttons for every unmarked day — the way
-  // back after a lost morning message.
+  // Only a status, never buttons: days are answered from the morning message.
   const stats = await fetchStats();
-  const sent = await sendCheckins(stats, participant, false);
-  if (sent.length > 0) return;
+  const pending = pendingDates(stats, participant.id);
+  const status = pending.length > 0
+    ? `${participant.name}, не отмечено: ${pending.map(formatDate).join(", ")}.\n` +
+      `Отметить можно кнопками в утреннем сообщении — оно приходит в 10:00.`
+    : `${participant.name}, все дни отмечены. Завтра в 10:00 спрошу про сегодня.`;
 
   await telegram("sendMessage", {
     chat_id: chatId,
-    text: `${participant.name}, все дни отмечены. Завтра в 10:00 спрошу про сегодня.\n\n` +
-      `Вся статистика на сайте:\n${SITE_URL}`,
+    text: `${status}\n\nВся статистика на сайте:\n${SITE_URL}`,
   });
 }
 
