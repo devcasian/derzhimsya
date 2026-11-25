@@ -108,8 +108,9 @@ export function renderCheckin(
       ? `✅ ${byGender(gender, "Держался", "Держалась")}`
       : `❌ ${byGender(gender, "Сорвался", "Сорвалась")}`;
     return {
-      text: `${chosen ? "• " : ""}${habit.emoji} ${label}`,
+      text: `${habit.emoji} ${label}`,
       callback_data: `c:${habit.id}:${date}:${success ? 1 : 0}`,
+      ...(chosen ? { style: success ? "success" : "danger" } : {}),
     };
   };
 
